@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+  	<meta name="robots" content="noindex, nofollow" />
+  	<meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>STAT画像学習システム</title>
+    <link href="css/test-zoom1.css" rel="stylesheet" />
+    
+    <!--
+    <script>
+      // 未認証ならログインへ
+      if (sessionStorage.getItem("authenticated") !== "true") {
+        location.replace("index.html");
+      } 
+    </script>-->
+  </head>
+
+  <body>
+  	<div id="loadingOverlay">
+  		<div class="spinner"></div>
+  		<div class="loading-text">Loading...</div>
+    </div>
+
+    <main style="display: none">
+      <h1 id="setTitle">検査画像</h1>
+      
+      <div class="set-buttons" id="setButtonsContainer"></div>
+
+      <div class="viewer">
+      	<img alt="CT Slice" id="ctImage" src="" />
+      </div>
+      
+      <!-- ▼ ここから：拡大コントロール（配置のみ。機能は後で実装） -->
+      <div class="zoom-controls" aria-label="ズーム操作">
+      	<button type="button" id="zoomOutBtn" class="zoom-button" aria-label="縮小">🔎－</button>
+        <span id="zoomLevel" class="zoom-level" aria-live="polite" aria-atomic="true">100%</span>
+        <button type="button" id="zoomInBtn" class="zoom-button" aria-label="拡大">🔎＋</button>
+      </div>
+      
+      
+      <div class="slider-container">
+        <button class="arrow-button" onclick="changeSlice(-1)">←</button>
+        <input
+          id="sliceSlider"
+          min="1"
+          step="1"
+          type="range"
+          oninput="updateSlice(parseInt(this.value))"
+        />
+        <button class="arrow-button" onclick="changeSlice(1)">→</button>
+      </div>
+
+      <div class="slice-info" id="sliceInfo">現在のスライス: 1</div>
+
+      <div class="navigation">
+        <button onclick="location.href='answer3-1.html'">
+          <span class="icon">▶</span>
+          <span class="label">解答</span>
+        </button>
+      </div>
+    </main>
+
+    <script>
+      const imageSets = {
+        "Xp": { label: "レントゲン", totalSlices: 1, padding: 5 },
+        "CT-tra": { label: "造影CT", totalSlices: 96, padding: 5 },
+        "CT-lung": { label: "CT肺", totalSlices: 79, padding: 5 },
+        "CT-cor": { label: "cor画像", totalSlices: 96, padding: 5 },
+      };
+
+      let currentSet = "Xp"; // ← ここを変えるのを忘れない
+      let currentSlice = 1;
+      const imageCache = {};
+
+      const ctImage = document.getElementById("ctImage");
+      const slider = document.getElementById("sliceSlider");
+      const info = document.getElementById("sliceInfo");
+      const title = document.getElementById("setTitle");
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      const mainContent = document.querySelector("main");
+      const setButtonsContainer = document.getElementById("setButtonsContainer");
+
+      function getImageFilename(n, set = currentSet) {
+        const padding = imageSets[set].padding || 0;
+        const padded = String(n).padStart(padding, "0");
+        return `${set}/${set}-${padded}.JPG`;
+      }
+
+      function preloadImages(set, callback) {
+        if (imageCache[set]) {
+          callback();
+          return;
+        }
+
+        const { totalSlices } = imageSets[set];
+        imageCache[set] = [];
+        let loaded = 0;
+
+        for (let i = 1; i <= totalSlices; i++) {
+          const img = new Image();
+          img.onload = img.onerror = () => {
+            loaded++;
+            if (loaded === totalSlices) callback();
+          };
+          img.src = getImageFilename(i, set);
+          imageCache[set][i] = img;
+        }
+      }
+
+      function updateSlice(n) {
+        const total = imageSets[currentSet].totalSlices;
+        currentSlice = n;
+        const img = imageCache[currentSet]?.[n];
+        ctImage.src = img?.src || getImageFilename(n);
+        info.textContent = `現在のスライス: ${n} / ${total}`;
+        slider.value = n;
+      }
+
+      function changeSlice(step) {
+        const total = imageSets[currentSet].totalSlices;
+        const newSlice = Math.max(1, Math.min(total, currentSlice + step));
+        updateSlice(newSlice);
+      }
+
+      function switchImageSetTo(setName) {
+        loadingOverlay.style.display = "flex";
+        mainContent.style.display = "none";
+
+        currentSet = setName;
+        currentSlice = 1;
+
+        slider.max = imageSets[setName].totalSlices;
+        slider.value = currentSlice;
+
+        preloadImages(currentSet, () => {
+          loadingOverlay.style.display = "none";
+          mainContent.style.display = "flex";
+          updateSlice(currentSlice);
+          updateButtonStates();
+        });
+      }
+
+      function createSetButtons() {
+        for (const key in imageSets) {
+          const btn = document.createElement("button");
+          btn.textContent = imageSets[key].label;
+          btn.className = "set-button";
+          btn.dataset.setKey = key;
+          btn.addEventListener("click", () => switchImageSetTo(key));
+          setButtonsContainer.appendChild(btn);
+        }
+      }
+
+      function updateButtonStates() {
+        const buttons = setButtonsContainer.querySelectorAll(".set-button");
+        buttons.forEach((btn) => {
+          const key = btn.dataset.setKey;
+          if (key === currentSet) {
+            btn.disabled = true;
+            btn.innerHTML = `✔️ ${imageSets[key].label}`;
+          } else {
+            btn.disabled = false;
+            btn.innerHTML = imageSets[key].label;
+          }
+        });
+      }
+      
+
+/* === ズーム＆押している間だけドラッグできる処理 ===================== */
+let zoomScale = 1;
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 4;
+const STEP_ZOOM = 0.2;
+
+let offsetX = 0;
+let offsetY = 0;
+let startX = 0;
+let startY = 0;
+let isDragging = false;
+
+const zoomLevelEl = document.getElementById("zoomLevel");
+const zoomInBtn   = document.getElementById("zoomInBtn");
+const zoomOutBtn  = document.getElementById("zoomOutBtn");
+
+function applyZoom() {
+  ctImage.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${zoomScale})`;
+  zoomLevelEl.textContent = `${Math.round(zoomScale * 100)}%`;
+}
+
+function setZoom(next) {
+  zoomScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, next));
+  if (zoomScale <= 1) {
+    offsetX = 0;
+    offsetY = 0;
+  }
+  applyZoom();
+}
+
+function zoomIn()  { setZoom(zoomScale + STEP_ZOOM); }
+function zoomOut() { setZoom(zoomScale - STEP_ZOOM); }
+
+function resetZoom() {
+  zoomScale = 1;
+  offsetX = 0;
+  offsetY = 0;
+  applyZoom();
+}
+
+/* === 枠外に出ないように制限 ===================== */
+function clampOffsets() {
+  const rect = document.querySelector(".viewer").getBoundingClientRect();
+  const imgWidth = rect.width * zoomScale;
+  const imgHeight = rect.height * zoomScale;
+  const maxX = (imgWidth - rect.width) / 2;
+  const maxY = (imgHeight - rect.height) / 2;
+  offsetX = Math.max(-maxX, Math.min(maxX, offsetX));
+  offsetY = Math.max(-maxY, Math.min(maxY, offsetY));
+}
+
+/* === PCドラッグ操作（押している間だけ） ===================== */
+/* === PCドラッグ操作（押している間だけ滑らか移動・ズレ防止） === */
+ctImage.addEventListener("mousedown", (e) => {
+  if (zoomScale <= 1) return;
+  e.preventDefault(); // ← ブラウザの画像ドラッグ防止
+  isDragging = true;
+  startX = e.clientX;
+  startY = e.clientY;
+  ctImage.style.cursor = "grabbing";
+});
+
+window.addEventListener("mousemove", (e) => {
+  if (!isDragging) return;
+  e.preventDefault();
+
+  // 移動量（差分）を計算
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+  startX = e.clientX;
+  startY = e.clientY;
+
+  offsetX += dx;
+  offsetY += dy;
+  clampOffsets();
+  applyZoom();
+});
+
+window.addEventListener("mouseup", () => {
+  isDragging = false;
+  ctImage.style.cursor = "grab";
+});
+
+
+/* === スマホスワイプ操作（押している間だけ移動） === */
+let lastTouchX = 0;
+let lastTouchY = 0;
+
+ctImage.addEventListener("touchstart", (e) => {
+  if (zoomScale <= 1) return;
+  if (e.touches.length !== 1) return;
+  const t = e.touches[0];
+  lastTouchX = t.clientX;
+  lastTouchY = t.clientY;
+});
+
+ctImage.addEventListener("touchmove", (e) => {
+  if (zoomScale <= 1) return;
+  if (e.touches.length !== 1) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  const dx = t.clientX - lastTouchX;
+  const dy = t.clientY - lastTouchY;
+  lastTouchX = t.clientX;
+  lastTouchY = t.clientY;
+
+  offsetX += dx;
+  offsetY += dy;
+  clampOffsets();
+  applyZoom();
+});
+
+
+/* === ズームボタン === */
+zoomInBtn.addEventListener("click", zoomIn);
+zoomOutBtn.addEventListener("click", zoomOut);
+
+/* === 画像セット切り替え時にリセット === */
+const _origSwitchSet = switchImageSetTo;
+switchImageSetTo = function(setName) {
+  _origSwitchSet(setName);
+  resetZoom(); // ← セット切り替え時は倍率を100%に
+};
+
+
+      window.onload = () => {
+        createSetButtons();
+        updateButtonStates();
+        preloadImages(currentSet, () => {
+          loadingOverlay.style.display = "none";
+          mainContent.style.display = "flex";
+          updateSlice(currentSlice);
+          applyZoom(); // 初期表示を100%と表示同期
+        });
+      };
+    </script>
+  </body>
+</html>
