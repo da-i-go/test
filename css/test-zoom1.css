@@ -1,0 +1,239 @@
+/* === ページ全体の基本設定 === */
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: sans-serif;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* mainを縦方向にも中央に配置 */
+main {
+  width: 100%;
+  max-width: 95vw;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1;
+}
+
+/* 見出し */
+h1 {
+  margin-bottom: 1rem;
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+/* セット切り替えボタン */
+.set-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.set-button {
+  padding: 0.6em 1.2em;
+  font-size: 1rem;
+  background-color: #007acc;
+  color: white;
+  border: none;
+  border-radius: 0.4em;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.set-button:hover {
+  background-color: #005fa3;
+}
+
+.set-button:disabled {
+  background-color: #ccc;
+  cursor: default;
+}
+
+/* === 画像表示領域 === */
+.viewer {
+  position: relative;
+  width: 100%;
+  max-width: 512px;
+  height: 512px; /* ← 枠サイズを固定 */
+  overflow: hidden; /* 枠外を隠す＝枠内ズーム */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1rem;
+  background: black;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+/* 画像は中央基準でズーム・位置固定 */
+.viewer img {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  transform-origin: center center;
+  will-change: transform;
+  transition: transform 0.15s ease-out; /* ←滑らかズーム */
+}
+
+/* === ズームボタン === */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 512px;
+  margin: 0 0 0.75rem;
+}
+
+.zoom-button {
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  min-width: 44px;
+  height: 36px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.zoom-button:hover { background-color: #eee; }
+
+.zoom-level {
+  min-width: 70px;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* === スライダーエリア === */
+.slider-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 512px;
+  margin-bottom: 1rem;
+}
+
+.arrow-button {
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.arrow-button:hover {
+  background-color: #eee;
+}
+
+input[type="range"] {
+  flex: 1;
+}
+
+.slice-info {
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+/* === ナビゲーションボタン === */
+.navigation {
+  margin-bottom: 1rem;
+}
+
+.navigation button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.8em 1.5em;
+  font-size: 1.1rem;
+  background-color: #007acc;
+  color: white;
+  border: none;
+  border-radius: 0.4em;
+  cursor: pointer;
+}
+
+.navigation button:hover {
+  background-color: #005fa3;
+}
+
+/* === ローディング画面 === */
+#loadingOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 6px solid #ccc;
+  border-top-color: #007acc;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #444;
+}
+
+/* === モバイル対応 === */
+@media (max-width: 600px) {
+  .viewer {
+    max-width: 90vw;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  .zoom-button { height: 32px; font-size: 16px; min-width: 40px; }
+  .zoom-level  { min-width: 64px; }
+
+  .arrow-button {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+}
+
+.viewer img {
+  cursor: grab;
+}
+.viewer img:active {
+  cursor: grabbing;
+}
