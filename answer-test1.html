@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>診断結果</title>
+    <link rel="stylesheet" href="css/answer-test.css" />
+    
+    <!-- 
+    <script>
+      if (sessionStorage.getItem("authenticated") !== "true") {
+        location.replace("index.html");
+      }
+    </script> -->
+  </head>
+
+  <body>
+    <h1>診断結果</h1>
+
+    <section class="result-section">
+      <h2>■ 診断名</h2>
+      <p>CV先端離断</p>
+    </section>
+
+    <section class="result-section">
+      <h2>■ Key画像</h2>
+      <div class="carousel-container">
+        <div class="carousel-wrapper">
+          <button class="carousel-button prev">❮</button>
+          <div class="carousel-track-container">
+            <ul class="carousel-track">
+              <li class="carousel-slide">
+                <img src="key-images/Xp-kako.JPG" alt="キー画像の説明" />
+                <p class="caption">2ヶ月前のレントゲン画像</p>
+              </li>
+              <li class="carousel-slide">
+                <img src="key-images/Xp.JPG" alt="キー画像２の説明" />
+                <p class="caption">離断が発覚した日のレントゲン画像</p>
+              </li>
+            </ul>
+          </div>
+          <button class="carousel-button next">❯</button>
+        </div>
+        <div class="carousel-indicators"></div>
+      </div>
+    </section>
+    
+        <!-- クリック/タップで拡大表示用のライトボックス -->
+<div id="lightbox" class="lightbox" aria-hidden="true">
+  <button class="lightbox__close" aria-label="閉じる">×</button>
+  <img id="lightboxImg" alt="" />
+</div>
+
+    <section class="result-section">
+      <h2>■ 解説</h2>
+      <div class="explanation">
+        <p>帰宅していたため、緊急で呼び出しをした。</p>
+        <p>カテーテルを問題なく抜去でき、退院された。</p>
+      </div>
+    </section>
+
+    <!-- 問題一覧へ戻る -->
+    <div class="back-button">
+      <a href="https://da-i-go.github.io/STATlms-home/problems.html">問題一覧へ戻る</a>
+    </div>
+
+    <!-- スライド操作スクリプト -->
+    <script>
+      const track = document.querySelector(".carousel-track");
+      const slides = Array.from(track.children);
+      const nextButton = document.querySelector(".carousel-button.next");
+      const prevButton = document.querySelector(".carousel-button.prev");
+      const indicatorsContainer = document.querySelector(".carousel-indicators");
+
+      slides.forEach((_, index) => {
+        const dot = document.createElement("span");
+        dot.classList.add("indicator");
+        if (index === 0) dot.classList.add("active");
+        dot.addEventListener("click", () => {
+          currentIndex = index;
+          updateSlidePosition();
+        });
+        indicatorsContainer.appendChild(dot);
+      });
+
+      const indicators = indicatorsContainer.querySelectorAll(".indicator");
+      let currentIndex = 0;
+
+      function updateSlidePosition() {
+        const slideWidth = slides[0].getBoundingClientRect().width;
+        track.style.transform = "translateX(-" + slideWidth * currentIndex + "px)";
+        indicators.forEach((dot, index) => {
+          dot.classList.toggle("active", index === currentIndex);
+        });
+      }
+
+      nextButton.addEventListener("click", () => {
+        currentIndex = (currentIndex + 1) % slides.length;
+        updateSlidePosition();
+      });
+
+      prevButton.addEventListener("click", () => {
+        currentIndex = (currentIndex - 1 + slides.length) % slides.length;
+        updateSlidePosition();
+      });
+
+      window.addEventListener("load", updateSlidePosition);
+      window.addEventListener("resize", updateSlidePosition);
+    </script>
+    
+    <script>
+  (function () {
+    const imgs     = document.querySelectorAll(".carousel-slide img");
+    const lightbox = document.getElementById("lightbox");
+    const imgEl    = document.getElementById("lightboxImg");
+    const closeBtn = document.querySelector(".lightbox__close");
+
+    function openLightbox(src, alt) {
+      imgEl.src = src;
+      imgEl.alt = alt || "";
+      lightbox.classList.add("open");
+      lightbox.setAttribute("aria-hidden", "false");
+      // 背景スクロール抑止
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove("open");
+      lightbox.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      imgEl.src = "";
+    }
+
+    // PC: クリック / スマホ: タップ（touchend）で開く
+    imgs.forEach((img) => {
+      img.style.cursor = "zoom-in";
+      img.addEventListener("click", () => openLightbox(img.src, img.alt), { passive: true });
+      // iOS の挙動安定化のため touchend もハンドリング（クリック二重発火を防ぐため preventDefault）
+      img.addEventListener("touchend", (e) => { e.preventDefault(); openLightbox(img.src, img.alt); }, { passive: false });
+    });
+
+    // 背景クリック or × ボタン or ESC で閉じる
+    lightbox.addEventListener("click", (e) => { if (e.target === lightbox) closeLightbox(); });
+    closeBtn.addEventListener("click", closeLightbox);
+    window.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLightbox(); });
+  })();
+</script>
+
+
+    <!-- スプレッドシート記録スクリプト -->
+    <script>
+      (function () {
+        if (sessionStorage.getItem("authenticated") !== "true") return;
+        const API = "https://script.google.com/macros/s/AKfycbx8b_17MyBUxJtJhJ21KFSfJguUBSGKHBg-WjLHHylbqho1pFjZKIMjvqlMWzUWNFcC/exec"; // GASのURL
+        const uid = sessionStorage.getItem("uid") || "";
+        const problemId = "3-4"; // ← ページごとに固定
+        const page = location.pathname + location.search;
+
+        fetch(API + "?route=done", {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ uid, problemId, page }),
+        }).catch(console.warn);
+      })();
+    </script>
+
+  </body>
+</html>
